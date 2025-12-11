@@ -2,7 +2,7 @@
    Versión corregida:
    - Fecha en formato argentino (DD/MM/AAAA) en el PDF
    - Año dinámico para "ORDEN DE SERVICIO Nro"
-   - Tipo de Vuelo aparece UNA sola vez, en su propia tabla
+   - Tabla extra con Tipo de Vuelo + Posición Plataforma (una sola vez)
    - Títulos claros para secciones (Personal Terrestre, Seguridad, Vehículos)
 */
 
@@ -771,7 +771,7 @@
       });
       y = doc.lastAutoTable.finalY + 6;
 
-      // DATOS DEL VUELO (SIN columna "Tipo de Vuelo")
+      // DATOS DEL VUELO (SIN Posición Plataforma)
       const empresa = qs('empresa').value || '-';
       const codigoVuelo = qs('codigoVuelo').value || '-';
       const matricula = qs('matricula').value || '-';
@@ -787,12 +787,12 @@
       const vueloHead = [[
         'Empresa','Código de Vuelo','Matrícula Aeronave',
         'Origen','Destino','Hora (Part/Arr)',
-        'Con demora','Posición Plataforma'
+        'Con demora'
       ]];
       const vueloBody = [[
         empresa, codigoVuelo, matricula,
         origen, destino, horaShow,
-        conDemora, posicion
+        conDemora
       ]];
 
       doc.autoTable({
@@ -809,26 +809,28 @@
           3: { cellWidth: 25 },
           4: { cellWidth: 25 },
           5: { cellWidth: 25 },
-          6: { cellWidth: 20 },
-          7: { cellWidth: 30 }
+          6: { cellWidth: 20 }
         },
         theme: 'grid'
       });
       y = doc.lastAutoTable.finalY + 4;
 
-      // TABLA SOLO PARA TIPO DE VUELO (UNA VEZ)
-      const tipoVueloHead = [['Tipo de Vuelo', '']];
-      const tipoVueloBody = [[tipoVuelo, '']];
+      // TABLA EXTRA: Tipo de Vuelo + Posición Plataforma
+      const vueloExtraHead = [['Detalle','Valor']];
+      const vueloExtraBody = [
+        ['Tipo de Vuelo', tipoVuelo],
+        ['Posición Plataforma', posicion]
+      ];
 
       doc.autoTable({
         startY: y,
-        head: tipoVueloHead,
-        body: tipoVueloBody,
+        head: vueloExtraHead,
+        body: vueloExtraBody,
         margin: { left: margin, right: margin },
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [210, 220, 230], textColor: 20 },
         columnStyles: {
-          0: { cellWidth: 40 },
+          0: { cellWidth: 45 },
           1: { cellWidth: 'auto' }
         },
         theme: 'grid'
