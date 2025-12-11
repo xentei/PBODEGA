@@ -1,8 +1,9 @@
-/* app.js - versión ajustada
-   - Fecha en formato argentino (DD/MM/AAAA) dentro del PDF
-   - Año dinámico en "ORDEN DE SERVICIO Nro"
-   - "Tipo de Vuelo" resaltado en una línea aparte
-   - Títulos claros para: Personal Terrestre, Personal de Seguridad y Vehículos
+/* app.js
+   Versión corregida:
+   - Fecha en formato argentino (DD/MM/AAAA) en el PDF
+   - Año dinámico para "ORDEN DE SERVICIO Nro"
+   - Tipo de Vuelo aparece UNA sola vez, en su propia tabla
+   - Títulos claros para secciones (Personal Terrestre, Seguridad, Vehículos)
 */
 
 (function () {
@@ -53,7 +54,7 @@
     });
   }
 
-  // 👉 NUEVO: formatear fecha YYYY-MM-DD a DD/MM/YYYY
+  // Fecha YYYY-MM-DD -> DD/MM/YYYY
   function formatearFechaArg(fechaIso) {
     if (!fechaIso) return '';
     const partes = fechaIso.split('-');
@@ -668,7 +669,6 @@
       const jsPDF = window.jspdf.jsPDF;
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 15;
       let y = 12;
 
@@ -771,7 +771,7 @@
       });
       y = doc.lastAutoTable.finalY + 6;
 
-      // DATOS DEL VUELO
+      // DATOS DEL VUELO (SIN columna "Tipo de Vuelo")
       const empresa = qs('empresa').value || '-';
       const codigoVuelo = qs('codigoVuelo').value || '-';
       const matricula = qs('matricula').value || '-';
@@ -787,12 +787,12 @@
       const vueloHead = [[
         'Empresa','Código de Vuelo','Matrícula Aeronave',
         'Origen','Destino','Hora (Part/Arr)',
-        'Con demora','Tipo de Vuelo','Posición Plataforma'
+        'Con demora','Posición Plataforma'
       ]];
       const vueloBody = [[
         empresa, codigoVuelo, matricula,
         origen, destino, horaShow,
-        conDemora, tipoVuelo, posicion
+        conDemora, posicion
       ]];
 
       doc.autoTable({
@@ -809,23 +809,33 @@
           3: { cellWidth: 25 },
           4: { cellWidth: 25 },
           5: { cellWidth: 25 },
-          6: { cellWidth: 18 },
-          7: { cellWidth: 25 },
-          8: { cellWidth: 20 }
+          6: { cellWidth: 20 },
+          7: { cellWidth: 30 }
         },
         theme: 'grid'
       });
       y = doc.lastAutoTable.finalY + 4;
 
-      // 👉 Resaltamos explícitamente el tipo de vuelo
-      doc.setFontSize(9);
-      doc.setFont(undefined, 'bold');
-      doc.text('Tipo de Vuelo:', margin, y);
-      doc.setFont(undefined, 'normal');
-      doc.text(tipoVuelo, margin + 28, y);
-      y += 6;
+      // TABLA SOLO PARA TIPO DE VUELO (UNA VEZ)
+      const tipoVueloHead = [['Tipo de Vuelo', '']];
+      const tipoVueloBody = [[tipoVuelo, '']];
 
-      // PERSONAL DE APOYO TERRESTRE (título claro)
+      doc.autoTable({
+        startY: y,
+        head: tipoVueloHead,
+        body: tipoVueloBody,
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [210, 220, 230], textColor: 20 },
+        columnStyles: {
+          0: { cellWidth: 40 },
+          1: { cellWidth: 'auto' }
+        },
+        theme: 'grid'
+      });
+      y = doc.lastAutoTable.finalY + 6;
+
+      // PERSONAL DE APOYO TERRESTRE
       doc.setFontSize(10);
       doc.setFont(undefined, 'bold');
       doc.text('PERSONAL DE APOYO TERRESTRE', margin, y);
@@ -866,7 +876,7 @@
       });
       y = doc.lastAutoTable.finalY + 6;
 
-      // PERSONAL DE SEGURIDAD (título claro)
+      // PERSONAL DE SEGURIDAD
       doc.setFontSize(10);
       doc.setFont(undefined, 'bold');
       doc.text('PERSONAL DE SEGURIDAD', margin, y);
@@ -905,7 +915,7 @@
       });
       y = doc.lastAutoTable.finalY + 6;
 
-      // VEHÍCULOS (título claro)
+      // VEHÍCULOS
       doc.setFontSize(10);
       doc.setFont(undefined, 'bold');
       doc.text('VEHÍCULOS CONTROLADOS', margin, y);
@@ -1027,7 +1037,7 @@
         }
       }
 
-      // Nombre del archivo: sigue usando ISO porque es más cómodo para ordenar
+      // Nombre del archivo (ISO para ordenar)
       const fechaForName = (fechaIso || '').replace(/-/g, '') || 'NOFECHA';
       const safeCodigo = (qs('codigoVuelo').value || 'NOCODE').replace(/\s+/g, '');
       const filename = `PLANILLA_BODEGA_${fechaForName}_${safeCodigo}.pdf`;
