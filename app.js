@@ -1,14 +1,15 @@
 /* app.js - versión ajustada
-   - Mantiene toda la lógica original de tu formulario
-   - Mejora la generación de PDF:
-       * Usa correctamente jsPDF + autoTable con salto de página automático
-       * Ancla la firma DENTRO de la celda "Firma" en la tabla del responsable PSA
+   - Fecha en formato argentino (DD/MM/AAAA) dentro del PDF
+   - Año dinámico en "ORDEN DE SERVICIO Nro"
+   - "Tipo de Vuelo" resaltado en una línea aparte
+   - Títulos claros para: Personal Terrestre, Personal de Seguridad y Vehículos
 */
 
 (function () {
-  // Utilities
+  // Helpers básicos
   function qs(id) { return document.getElementById(id); }
   function $all(sel, ctx = document) { return Array.from(ctx.querySelectorAll(sel)); }
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -20,7 +21,7 @@
     });
   }
 
-  // Safe localStorage wrappers
+  // localStorage seguro
   function safeSetItem(k, v) {
     try { localStorage.setItem(k, v); return true; } catch (e) { console.warn('localStorage.setItem failed', e); return false; }
   }
@@ -28,7 +29,7 @@
     try { return localStorage.getItem(k); } catch (e) { console.warn('localStorage.getItem failed', e); return null; }
   }
 
-  // Load image (local file path) and return dataURL or null
+  // Cargar una imagen y convertirla a dataURL
   function loadImageAsDataURL(src) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -52,7 +53,17 @@
     });
   }
 
-  // Elements
+  // 👉 NUEVO: formatear fecha YYYY-MM-DD a DD/MM/YYYY
+  function formatearFechaArg(fechaIso) {
+    if (!fechaIso) return '';
+    const partes = fechaIso.split('-');
+    if (partes.length !== 3) return fechaIso;
+    const [anio, mes, dia] = partes;
+    if (!anio || !mes || !dia) return fechaIso;
+    return `${dia}/${mes}/${anio}`;
+  }
+
+  // Elementos
   const btnHoraInicio = qs('btnHoraInicio');
   const btnHoraFin = qs('btnHoraFin');
   const btnHoraPartida = qs('btnHoraPartida');
@@ -74,12 +85,11 @@
   const autosaveIndicator = qs('autosaveIndicator');
   const errorContainer = qs('errorContainer');
 
-  // Dynamic containers
   const personalTerrestreTable = qs('personalTerrestreTable');
   const personalSeguridadTable = qs('personalSeguridadTable');
   const vehiculosContainer = qs('vehiculosContainer');
 
-  // State
+  // Estado firma
   let canvasCtx = null;
   let drawing = false;
   let hasFirmado = false;
@@ -87,24 +97,22 @@
   let signatureInitialized = false;
   let autosaveInterval = null;
 
-  // INITIAL SETUP
+  // INIT
   function init() {
-    // filas por defecto
     agregarPersonalTerrestre();
     agregarPersonalSeguridad();
     agregarVehiculo();
 
-    // fecha actual
     const fechaControl = qs('fechaControl');
     if (fechaControl) fechaControl.valueAsDate = new Date();
 
-    // botones de hora
+    // Botones de hora
     btnHoraInicio && btnHoraInicio.addEventListener('click', () => setCurrentTime('horaInicio'));
     btnHoraFin && btnHoraFin.addEventListener('click', () => setCurrentTime('horaFin'));
     btnHoraPartida && btnHoraPartida.addEventListener('click', () => setCurrentTime('horaPartida'));
     btnHoraArribo && btnHoraArribo.addEventListener('click', () => setCurrentTime('horaArribo'));
 
-    // manejo visual de radio-option (seleccionado)
+    // Radio visual
     document.querySelectorAll('.radio-option').forEach(opt => {
       opt.addEventListener('click', () => {
         const groupParent = opt.parentElement;
@@ -112,38 +120,37 @@
         opt.classList.add('selected');
         const input = opt.querySelector('input');
         if (input) input.checked = true;
-        if (input && input.name === 'tipoVuelo') cambiarTipoVuelo(input.value, opt);
-        if (input && input.name === 'cantPersonal') selectPersonal(input.value, opt);
+        if (input && input.name === 'tipoVuelo') cambiarTipoVuelo(input.value);
+        if (input && input.name === 'cantPersonal') selectPersonal(input.value);
       });
     });
 
-    // agregar / limpiar
+    // Botones de agregar / limpiar
     btnAddPT && btnAddPT.addEventListener('click', agregarPersonalTerrestre);
     btnAddPS && btnAddPS.addEventListener('click', agregarPersonalSeguridad);
     btnAddVh && btnAddVh.addEventListener('click', agregarVehiculo);
     btnClear && btnClear.addEventListener('click', limpiarFormulario);
 
-    // preview / firma
+    // Preview / firma
     btnPreview && btnPreview.addEventListener('click', abrirVistaPrevia);
     closePreview && closePreview.addEventListener('click', cerrarVistaPrevia);
     btnPreviewBack && btnPreviewBack.addEventListener('click', cerrarVistaPrevia);
     btnPreviewConfirm && btnPreviewConfirm.addEventListener('click', confirmarYFirmar);
 
-    // modal firma
-    closeSignature && closeSignature.addEventListener('click', cerrarModal);
+    // Modal firma
+    closeSignature && closeSignature.addEventListener('click', cerrarModalFirma);
     btnClearSig && btnClearSig.addEventListener('click', limpiarFirmaModal);
     btnConfirmarFirma && btnConfirmarFirma.addEventListener('click', confirmarFirma);
 
-    // autosave
+    // Autosave
     startAutosave();
 
-    // actualizar vista previa ante cualquier cambio
+    // Preview live
     document.getElementById('planillaForm').addEventListener('input', updatePreview);
 
     updatePreview();
   }
 
-  // Helpers de hora
   function setCurrentTime(fieldId) {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -155,7 +162,6 @@
     }
   }
 
-  // Cantidad de personal (opción "otro")
   function selectPersonal(value) {
     const otroField = qs('cantPersonalOtro');
     if (value === 'otro') {
@@ -169,7 +175,6 @@
     updatePreview();
   }
 
-  // Cambio tipo de vuelo (Salida / Arribo)
   function cambiarTipoVuelo(tipo) {
     const origen = qs('origen');
     const destino = qs('destino');
@@ -192,7 +197,7 @@
     updatePreview();
   }
 
-  // Agregar filas de tablas dinámicas
+  // Tablas dinámicas
   function agregarPersonalTerrestre() {
     const table = personalTerrestreTable;
     const row = table.insertRow();
@@ -363,7 +368,6 @@
     if (qs('medioPaletas') && qs('medioPaletas').checked) medios.push('Paletas');
     if (qs('medioOtros') && qs('medioOtros').checked) medios.push('Otros');
 
-    // personal terrestre
     const nombresT   = $all('input[name="pt_nombre[]"]').map(i => i.value || '—');
     const dnisT      = $all('input[name="pt_dni[]"]').map(i => i.value || '—');
     const legajosT   = $all('input[name="pt_legajo[]"]').map(i => i.value || '—');
@@ -388,7 +392,6 @@
         </div>`;
     }
 
-    // personal seguridad
     const nombresS   = $all('input[name="ps_nombre[]"]').map(i => i.value || '—');
     const dnisS      = $all('input[name="ps_dni[]"]').map(i => i.value || '—');
     const legajosS   = $all('input[name="ps_legajo[]"]').map(i => i.value || '—');
@@ -412,7 +415,6 @@
         </div>`;
     }
 
-    // vehículos
     const tiposVh     = $all('input[name="vh_tipo[]"]').map(i => i.value || '—');
     const empresasVh  = $all('input[name="vh_empresa[]"]').map(i => i.value || '—');
     const internosVh  = $all('input[name="vh_interno[]"]').map(i => i.value || '—');
@@ -441,7 +443,7 @@
       <div class="preview-section">
         <h4>🔍 Control PSA</h4>
         <div class="preview-item"><span class="preview-label">Orden Servicio:</span><span class="preview-value">${qs('ordenServicio').value || '-'}</span></div>
-        <div class="preview-item"><span class="preview-label">Fecha:</span><span class="preview-value">${qs('fechaControl').value || '-'}</span></div>
+        <div class="preview-item"><span class="preview-label">Fecha:</span><span class="preview-value">${formatearFechaArg(qs('fechaControl').value || '') || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Patrulla:</span><span class="preview-value">${qs('patrulla').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Hora Inicio:</span><span class="preview-value">${qs('horaInicio').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Hora Fin:</span><span class="preview-value">${qs('horaFin').value || '-'}</span></div>
@@ -497,7 +499,6 @@
     preview.innerHTML = html;
   }
 
-  // Validación y apertura de vista previa
   function abrirVistaPrevia() {
     errorContainer.innerHTML = '';
     const required = [
@@ -538,7 +539,6 @@
     document.body.style.overflow = 'auto';
   }
 
-  // Flujo de firma
   function confirmarYFirmar() {
     cerrarVistaPrevia();
     abrirModalFirma();
@@ -551,7 +551,7 @@
     limpiarFirmaModal();
   }
 
-  function cerrarModal() {
+  function cerrarModalFirma() {
     signatureModal.style.display = 'none';
     document.body.style.overflow = 'auto';
   }
@@ -629,11 +629,10 @@
       return;
     }
     firmaImagen = signatureCanvas.toDataURL('image/png');
-    cerrarModal();
+    cerrarModalFirma();
     generarPDF();
   }
 
-  // Limpiar formulario completo
   function limpiarFormulario() {
     if (!confirm('¿Limpiar todo el formulario?')) return;
     qs('planillaForm').reset();
@@ -651,12 +650,11 @@
     safeSetItem('borradorPlanilla', '');
   }
 
-  // ==============================
-  // GENERACIÓN DEL PDF
-  // ==============================
+  // ==============
+  // GENERACIÓN PDF
+  // ==============
   async function generarPDF() {
     try {
-      // Cargar librerías solo cuando se necesitan
       if (!window.jspdf) {
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
       }
@@ -674,7 +672,12 @@
       const margin = 15;
       let y = 12;
 
-      // Logos opcionales (si existen archivos logo_left.png / logo_right.png)
+      // Fecha cruda (input) y año
+      const fechaIso = qs('fechaControl').value || '';
+      const fechaArg = formatearFechaArg(fechaIso) || '-';
+      const anio = fechaIso ? fechaIso.split('-')[0] : '';
+
+      // Logos opcionales
       const logoLeft = await loadImageAsDataURL('logo_left.png');
       const logoRight = await loadImageAsDataURL('logo_right.png');
       const logoSize = 18;
@@ -701,7 +704,7 @@
       doc.text(title, pageWidth / 2, titleY + 7, { align: 'center' });
       y += titleHeight + 6;
 
-      // PATRULLA + ORDEN SERVICIO
+      // PATRULLA + ORDEN SERVICIO (con año dinámico)
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
       doc.text('PATRULLA:', margin, y);
@@ -711,12 +714,14 @@
       doc.setFont(undefined, 'bold');
       doc.text('ORDEN DE SERVICIO Nro:', margin + 90, y);
       doc.setFont(undefined, 'normal');
-      doc.text(qs('ordenServicio').value || '', margin + 140, y);
-      doc.text('/2025', margin + 180, y);
+      const ordenServ = qs('ordenServicio').value || '';
+      doc.text(ordenServ, margin + 140, y);
+      if (anio) {
+        doc.text('/' + anio, margin + 140 + doc.getTextWidth(ordenServ) + 2, y);
+      }
       y += 8;
 
-      // CONTROL PSA (tabla)
-      const fechaControl = qs('fechaControl').value || '-';
+      // CONTROL PSA
       const respNombre = qs('respNombre').value || '-';
       const horaInicio = qs('horaInicio').value || '-';
       const horaFin = qs('horaFin').value || '-';
@@ -739,7 +744,7 @@
         'Tipos de Controles'
       ]];
       const controlBody = [[
-        fechaControl,
+        fechaArg,
         respNombre,
         horaInicio,
         horaFin,
@@ -801,18 +806,33 @@
           0: { cellWidth: 30 },
           1: { cellWidth: 25 },
           2: { cellWidth: 30 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 30 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
           5: { cellWidth: 25 },
-          6: { cellWidth: 20 },
+          6: { cellWidth: 18 },
           7: { cellWidth: 25 },
-          8: { cellWidth: 30 }
+          8: { cellWidth: 20 }
         },
         theme: 'grid'
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 4;
 
-      // PERSONAL DE APOYO TERRESTRE
+      // 👉 Resaltamos explícitamente el tipo de vuelo
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.text('Tipo de Vuelo:', margin, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(tipoVuelo, margin + 28, y);
+      y += 6;
+
+      // PERSONAL DE APOYO TERRESTRE (título claro)
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('PERSONAL DE APOYO TERRESTRE', margin, y);
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+
       const headPT = [['Apellido y Nombre','DNI','Legajo','Función','Grupo']];
       const bodyPT = [];
       $all('input[name="pt_nombre[]"]').forEach((el, i) => {
@@ -844,9 +864,16 @@
         },
         theme: 'grid'
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 6;
 
-      // PERSONAL DE SEGURIDAD
+      // PERSONAL DE SEGURIDAD (título claro)
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('PERSONAL DE SEGURIDAD', margin, y);
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+
       const headPS = [['Apellido y Nombre','DNI','Legajo','Empresa']];
       const bodyPS = [];
       $all('input[name="ps_nombre[]"]').forEach((el, i) => {
@@ -876,9 +903,16 @@
         },
         theme: 'grid'
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 6;
 
-      // VEHÍCULOS
+      // VEHÍCULOS (título claro)
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('VEHÍCULOS CONTROLADOS', margin, y);
+      y += 4;
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+
       const headVH = [['Tipo de Vehículo','Empresa','Nº Interno','Operador','Observaciones']];
       const bodyVH = [];
       $all('input[name="vh_tipo[]"]').forEach((el, i) => {
@@ -910,7 +944,7 @@
         },
         theme: 'grid'
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 6;
 
       // NOVEDADES
       const novRows = [
@@ -933,10 +967,9 @@
         },
         theme: 'grid'
       });
-      y = doc.lastAutoTable.finalY + 10;
+      y = doc.lastAutoTable.finalY + 8;
 
       // RESPONSABLE + FIRMA
-      // ---> acá vamos a anclar bien la firma en la celda "Firma"
       const headResp = [['Datos del Responsable PSA','']];
       const bodyResp = [
         ['Firma', ''],
@@ -945,7 +978,7 @@
         ['DNI', qs('respDNI').value || '-']
       ];
 
-      let firmaCell = null; // acá guardamos posición de la celda donde va la firma
+      let firmaCell = null;
 
       doc.autoTable({
         startY: y,
@@ -960,7 +993,6 @@
         },
         theme: 'grid',
         didDrawCell: function (data) {
-          // Buscamos SOLO la fila "Firma" (row.index 0) y la segunda columna (index 1)
           if (data.section === 'body' && data.row.index === 0 && data.column.index === 1) {
             firmaCell = {
               x: data.cell.x,
@@ -973,18 +1005,13 @@
         }
       });
 
-      // Dibujar firma dentro de esa celda
       if (firmaCell) {
-        // Si la tabla quedó en otra página, volvemos a esa página
         doc.setPage(firmaCell.page);
-
         const padding = 2;
-        const maxAncho = Math.min(firmaCell.w - padding * 2, 60); // ancho máx firma
-        const altoFirma = 20; // alto en mm
-        let sigW = maxAncho;
-        let sigH = altoFirma;
-
-        // Centramos la firma dentro de la celda
+        const maxAncho = Math.min(firmaCell.w - padding * 2, 60);
+        const altoFirma = 20;
+        const sigW = maxAncho;
+        const sigH = altoFirma;
         const sigX = firmaCell.x + (firmaCell.w - sigW) / 2;
         const sigY = firmaCell.y + (firmaCell.h - sigH) / 2;
 
@@ -995,14 +1022,13 @@
             console.warn('No se pudo dibujar la firma en el PDF', e);
           }
         } else {
-          // Si no hay firma, dejamos el recuadro vacío (igual sirve como caja de firma)
           doc.setDrawColor(0);
           doc.rect(sigX, sigY, sigW, sigH);
         }
       }
 
-      // Nombre del archivo
-      const fechaForName = (qs('fechaControl').value || '').replace(/-/g, '') || 'NOFECHA';
+      // Nombre del archivo: sigue usando ISO porque es más cómodo para ordenar
+      const fechaForName = (fechaIso || '').replace(/-/g, '') || 'NOFECHA';
       const safeCodigo = (qs('codigoVuelo').value || 'NOCODE').replace(/\s+/g, '');
       const filename = `PLANILLA_BODEGA_${fechaForName}_${safeCodigo}.pdf`;
       doc.save(filename);
@@ -1014,16 +1040,15 @@
     }
   }
 
-  // Init app al cargar
+  // Eventos globales
   window.addEventListener('load', init);
 
-  // Cerrar modales al clickear afuera
   window.addEventListener('click', (ev) => {
-    if (ev.target === signatureModal) cerrarModal();
+    if (ev.target === signatureModal) cerrarModalFirma();
     if (ev.target === previewModal) cerrarVistaPrevia();
   });
 
-  // Exponer para debugging si querés mirar algo en consola
+  // Debug
   window.__planilla = {
     generarPDF,
     guardarBorrador,
