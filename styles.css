@@ -57,3 +57,30 @@ body{
 .preview-value{color:var(--text-primary);font-weight:500}
 .autosave-indicator{position:fixed;top:20px;right:20px;background:linear-gradient(135deg,var(--success),#059669);color:#fff;padding:10px 18px;border-radius:24px;font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;z-index:999}
 .autosave-indicator.show{opacity:1}
+/* === Ajuste de selects para modo oscuro === */
+
+/* Caja del select */
+.form-select {
+  background-color: #111827;   /* gris bien oscuro */
+  color: #E5E7EB;              /* texto gris claro */
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* Lista desplegable (las opciones) */
+.form-select option {
+  background-color: #0F172A;   /* mismo tono que el fondo de la app */
+  color: #E5E7EB;
+}
+
+/* Por las dudas, cualquier <select> genérico */
+select,
+select option {
+  background-color: #0F172A;
+  color: #E5E7EB;
+}
+
+/* Borde lindo cuando tiene foco */
+.form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.6);
+}
