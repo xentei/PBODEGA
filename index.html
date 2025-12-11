@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=yes,maximum-scale=5.0" />
+  <title>Planilla Control Bodega PSA</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="autosave-indicator" id="autosaveIndicator">💾 Guardado automático</div>
+
+  <div class="app-header">
+    <h1>📋 PLANILLA DE CONTROL DE BODEGA</h1>
+    <p>POLICÍA DE SEGURIDAD AEROPORTUARIA - UOSP METROPOLITANA</p>
+  </div>
+
+  <div class="container">
+    <div class="main-content">
+      <form id="planillaForm">
+        <!-- 1. CONTROL PSA -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon">🔍</div>
+            <h2 class="section-title">Control PSA</h2>
+          </div>
+
+          <div class="form-grid form-grid-3">
+            <div class="form-field">
+              <label class="form-label">Orden Servicio Nro</label>
+              <input type="text" class="form-input" id="ordenServicio" placeholder="/2025">
+            </div>
+            <div class="form-field">
+              <label class="form-label required">Fecha de Control</label>
+              <input type="date" class="form-input" id="fechaControl" required>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Patrulla</label>
+              <input type="text" class="form-input" id="patrulla" placeholder="PSA-1">
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top: 16px;">
+            <div class="time-field">
+              <div class="form-field">
+                <label class="form-label required">Hora Inicio</label>
+                <input type="time" class="form-input" id="horaInicio" required>
+              </div>
+              <button type="button" class="time-button" id="btnHoraInicio" title="Hora actual">🕐</button>
+            </div>
+            <div class="time-field">
+              <div class="form-field">
+                <label class="form-label required">Hora Finalización</label>
+                <input type="time" class="form-input" id="horaFin" required>
+              </div>
+              <button type="button" class="time-button" id="btnHoraFin" title="Hora actual">🕐</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <label class="form-label">Cantidad de Personal</label>
+            <div class="radio-group" id="grupoCantPersonal">
+              <div class="radio-option selected" data-value="1"><input type="radio" name="cantPersonal" value="1" id="pers1" checked><label for="pers1">1</label></div>
+              <div class="radio-option" data-value="2"><input type="radio" name="cantPersonal" value="2" id="pers2"><label for="pers2">2</label></div>
+              <div class="radio-option" data-value="3"><input type="radio" name="cantPersonal" value="3" id="pers3"><label for="pers3">3</label></div>
+              <div class="radio-option" data-value="otro"><input type="radio" name="cantPersonal" value="otro" id="persOtro"><label for="persOtro">Otro</label></div>
+            </div>
+            <input type="number" class="form-input" id="cantPersonalOtro" min="4" placeholder="Especificar cantidad" style="display:none;margin-top:10px;">
+          </div>
+
+          <div class="controls-wrapper" style="margin-top: 16px;">
+            <div class="control-group">
+              <div class="control-group-title">Tipos de Controles</div>
+              <div class="checkbox-group">
+                <div class="checkbox-option"><input type="checkbox" id="ctrlPersonas"><label for="ctrlPersonas">Personas</label></div>
+                <div class="checkbox-option"><input type="checkbox" id="ctrlEquipos"><label for="ctrlEquipos">Equipos</label></div>
+                <div class="checkbox-option"><input type="checkbox" id="ctrlCargas"><label for="ctrlCargas">Cargas</label></div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="control-group-title">Medios Técnicos</div>
+              <div class="checkbox-group">
+                <div class="checkbox-option"><input type="checkbox" id="medioMovil"><label for="medioMovil">Móvil</label></div>
+                <div class="checkbox-option"><input type="checkbox" id="medioPaletas"><label for="medioPaletas">Paletas</label></div>
+                <div class="checkbox-option"><input type="checkbox" id="medioOtros"><label for="medioOtros">Otros</label></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <label class="form-label">Tipo Procedimiento</label>
+            <div class="radio-group">
+              <div class="radio-option"><input type="radio" name="tipoProcedimiento" id="procOSVC" value="OSVC"><label for="procOSVC">OSVC</label></div>
+              <div class="radio-option"><input type="radio" name="tipoProcedimiento" id="procAleatorio" value="Aleatorio"><label for="procAleatorio">Aleatorio</label></div>
+              <div class="radio-option"><input type="radio" name="tipoProcedimiento" id="procRutina" value="Rutina"><label for="procRutina">Rutina</label></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. VUELO -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon">✈️</div>
+            <h2 class="section-title">Datos del Vuelo</h2>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label class="form-label required">Tipo de Vuelo</label>
+            <div class="radio-group">
+              <div class="radio-option selected" data-value="Salida"><input type="radio" name="tipoVuelo" id="vueloSalida" value="Salida" checked><label for="vueloSalida">✈️ Salida</label></div>
+              <div class="radio-option" data-value="Arribo"><input type="radio" name="tipoVuelo" id="vueloArribo" value="Arribo"><label for="vueloArribo">🛬 Arribo</label></div>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-3">
+            <div class="form-field"><label class="form-label required">Empresa</label><input type="text" class="form-input" id="empresa" required placeholder="AR"></div>
+            <div class="form-field"><label class="form-label required">Código de Vuelo</label><input type="text" class="form-input" id="codigoVuelo" required placeholder="AA1234"></div>
+            <div class="form-field"><label class="form-label">Matrícula Aeronave</label><input type="text" class="form-input" id="matricula" placeholder="LV-GOO"></div>
+          </div>
+
+          <div class="form-grid form-grid-3" style="margin-top: 16px;">
+            <div class="form-field"><label class="form-label">Origen</label><input type="text" class="form-input" id="origen"></div>
+            <div class="form-field"><label class="form-label">Destino</label><input type="text" class="form-input" id="destino"></div>
+            <div class="form-field"><label class="form-label">Posición Plataforma</label><input type="text" class="form-input" id="posicion"></div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top: 16px;">
+            <div class="time-field" id="campoHoraPartida"><div class="form-field"><label class="form-label">Hora Partida</label><input type="time" class="form-input" id="horaPartida"></div><button type="button" class="time-button" id="btnHoraPartida">🕐</button></div>
+            <div class="time-field" id="campoHoraArribo" style="display:none;"><div class="form-field"><label class="form-label">Hora Arribo</label><input type="time" class="form-input" id="horaArribo"></div><button type="button" class="time-button" id="btnHoraArribo">🕐</button></div>
+            <div class="form-field"><label class="form-label">Con Demora</label><select class="form-select" id="conDemora"><option value="NO">NO</option><option value="SI">SI</option></select></div>
+          </div>
+        </div>
+
+        <!-- 3. PERSONAL TERRESTRE -->
+        <div class="section">
+          <div class="section-header"><div class="section-icon">👷</div><h2 class="section-title">Personal de Apoyo Terrestre</h2></div>
+          <table class="data-table"><thead><tr><th>Apellido y Nombre</th><th>DNI</th><th>Legajo</th><th>Función</th><th>Grupo</th><th style="width: 50px;"></th></tr></thead>
+            <tbody id="personalTerrestreTable"></tbody>
+          </table>
+          <button type="button" class="btn btn-add" id="btnAddPT">+ Agregar Personal</button>
+        </div>
+
+        <!-- 4. PERSONAL SEGURIDAD -->
+        <div class="section">
+          <div class="section-header"><div class="section-icon">🛡️</div><h2 class="section-title">Personal de Seguridad</h2></div>
+          <table class="data-table"><thead><tr><th>Apellido y Nombre</th><th>DNI</th><th>Legajo</th><th>Empresa</th><th style="width: 50px;"></th></tr></thead>
+            <tbody id="personalSeguridadTable"></tbody>
+          </table>
+          <button type="button" class="btn btn-add" id="btnAddPS">+ Agregar Personal</button>
+        </div>
+
+        <!-- 5. VEHÍCULOS -->
+        <div class="section">
+          <div class="section-header"><div class="section-icon">🚗</div><h2 class="section-title">Vehículos Controlados</h2></div>
+          <div id="vehiculosContainer"></div>
+          <button type="button" class="btn btn-add" id="btnAddVh">+ Agregar Vehículo</button>
+        </div>
+
+        <!-- 6. NOVEDADES -->
+        <div class="section">
+          <div class="section-header"><div class="section-icon">📝</div><h2 class="section-title">Novedades</h2></div>
+          <div class="form-grid form-grid-2">
+            <div class="form-field"><label class="form-label">Sobre Equipajes/Cargas Despachadas</label><textarea class="form-textarea" id="novEquipajes" placeholder="Describir novedades..."></textarea></div>
+            <div class="form-field"><label class="form-label">Sobre Inspección del Personal</label><textarea class="form-textarea" id="novInspeccion" placeholder="Describir novedades..."></textarea></div>
+            <div class="form-field"><label class="form-label">Sobre Equipajes Utilizados</label><textarea class="form-textarea" id="novEquipajesUtil" placeholder="Describir novedades..."></textarea></div>
+            <div class="form-field"><label class="form-label">Otras Novedades</label><textarea class="form-textarea" id="otrasNovedades" placeholder="Describir otras novedades..."></textarea></div>
+          </div>
+        </div>
+
+        <!-- 7. RESPONSABLE -->
+        <div class="section">
+          <div class="section-header"><div class="section-icon">👤</div><h2 class="section-title">Responsable PSA</h2></div>
+          <div class="form-grid form-grid-3">
+            <div class="form-field"><label class="form-label required">Apellido y Nombre</label><input type="text" class="form-input" id="respNombre" required placeholder="PEREZ Juan"></div>
+            <div class="form-field"><label class="form-label required">DNI</label><input type="text" class="form-input" id="respDNI" required placeholder="12345678"></div>
+            <div class="form-field"><label class="form-label required">N° Legajo</label><input type="text" class="form-input" id="respLegajo" required placeholder="12345"></div>
+          </div>
+        </div>
+      </form>
+
+      <div class="action-bar"><button type="button" class="btn btn-secondary" id="btnClear">🗑️ Limpiar Formulario</button></div>
+    </div>
+
+    <div class="final-section">
+      <h2>👁️ REVISAR Y FIRMAR PLANILLA</h2>
+      <p>Revisá todos los datos antes de generar el documento final</p>
+      <div id="errorContainer"></div>
+      <button type="button" class="btn btn-generate" id="btnPreview">👁️ REVISAR PLANILLA</button>
+    </div>
+  </div>
+
+  <!-- MODAL FIRMA -->
+  <div id="signatureModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header"><h3>✍️ Firmá la Planilla</h3><button class="close-modal" id="closeSignature">×</button></div>
+      <div class="modal-body">
+        <div class="signature-pad-container">
+          <p class="signature-instructions"><strong>Dibujá tu firma usando el dedo o mouse</strong></p>
+          <canvas id="signatureCanvas" width="600" height="200" style="max-width:100%;background:white;border-radius:6px;"></canvas>
+        </div>
+        <div class="modal-actions" style="margin-top:14px;">
+          <button type="button" class="btn btn-danger" id="btnClearSig">🗑️ Limpiar</button>
+          <button type="button" class="btn btn-success" id="btnConfirmarFirma" disabled>✓ Confirmar y Generar PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VISTA PREVIA -->
+  <div class="preview-modal" id="previewModal">
+    <div class="preview-modal-content">
+      <div class="preview-header"><h3>👁️ Vista Previa</h3><button class="close-modal" id="closePreview">×</button></div>
+      <div class="preview-content" id="previewContent"></div>
+      <div class="preview-footer" style="padding:12px 16px;">
+        <button class="btn btn-secondary" id="btnPreviewBack">← Volver</button>
+        <button class="btn btn-success" id="btnPreviewConfirm">✓ Confirmar y Firmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
