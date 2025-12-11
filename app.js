@@ -2,7 +2,7 @@
    Versión corregida:
    - Fecha en formato argentino (DD/MM/AAAA) en el PDF
    - Año dinámico para "ORDEN DE SERVICIO Nro"
-   - Tabla extra con Tipo de Vuelo + Posición Plataforma (una sola vez)
+   - Tabla extra con encabezado: Tipo de Vuelo | Posición Plataforma
    - Títulos claros para secciones (Personal Terrestre, Seguridad, Vehículos)
 */
 
@@ -815,12 +815,9 @@
       });
       y = doc.lastAutoTable.finalY + 4;
 
-      // TABLA EXTRA: Tipo de Vuelo + Posición Plataforma
-      const vueloExtraHead = [['Detalle','Valor']];
-      const vueloExtraBody = [
-        ['Tipo de Vuelo', tipoVuelo],
-        ['Posición Plataforma', posicion]
-      ];
+      // TABLA EXTRA: encabezado Tipo de Vuelo | Posición Plataforma
+      const vueloExtraHead = [['Tipo de Vuelo', 'Posición Plataforma']];
+      const vueloExtraBody = [[tipoVuelo, posicion]];
 
       doc.autoTable({
         startY: y,
