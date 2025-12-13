@@ -1,9 +1,10 @@
 /* app.js
-   Versión corregida:
+   Versión con:
    - Fecha en formato argentino (DD/MM/AAAA) en el PDF
    - Año dinámico para "ORDEN DE SERVICIO Nro"
    - Tabla extra con encabezado: Tipo de Vuelo | Posición Plataforma
-   - Títulos claros para secciones (Personal Terrestre, Seguridad, Vehículos)
+   - Mejoras de firma
+   - 🔁 NUEVO: Autocompletar datos de vuelo desde API vuelos-flask
 */
 
 (function () {
@@ -62,6 +63,26 @@
     const [anio, mes, dia] = partes;
     if (!anio || !mes || !dia) return fechaIso;
     return `${dia}/${mes}/${anio}`;
+  }
+
+  // Normalizar código de vuelo (AR 1626 -> AR1626)
+  function normalizarCodigoVuelo(cod) {
+    return (cod || '').toString().replace(/\s+/g, '').toUpperCase();
+  }
+
+  // Marca el radio de tipo de vuelo y aplica estilos
+  function marcarTipoVueloRadio(tipo) {
+    const radio = document.querySelector(`input[name="tipoVuelo"][value="${tipo}"]`);
+    if (radio) {
+      radio.checked = true;
+      const opt = radio.closest('.radio-option');
+      if (opt) {
+        const parent = opt.parentElement;
+        if (parent) Array.from(parent.children).forEach(c => c.classList.remove('selected'));
+        opt.classList.add('selected');
+      }
+    }
+    cambiarTipoVuelo(tipo);
   }
 
   // Elementos
@@ -143,6 +164,17 @@
     btnClearSig && btnClearSig.addEventListener('click', limpiarFirmaModal);
     btnConfirmarFirma && btnConfirmarFirma.addEventListener('click', confirmarFirma);
 
+    // 🔁 NUEVO: autocompletar datos del vuelo desde la API cuando cambia el código
+    const codigoVueloInput = qs('codigoVuelo');
+    if (codigoVueloInput) {
+      const handler = () => { autoCompletarVueloDesdeAPI(); };
+      codigoVueloInput.addEventListener('change', handler);
+      codigoVueloInput.addEventListener('blur', handler);
+      codigoVueloInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') handler();
+      });
+    }
+
     // Autosave
     startAutosave();
 
@@ -196,6 +228,78 @@
       qs('horaPartida') && (qs('horaPartida').value = '');
     }
     updatePreview();
+  }
+
+  // 🔁 NUEVO: llamar a la API y autocompletar datos del vuelo
+  async function autoCompletarVueloDesdeAPI() {
+    const codigoInput = qs('codigoVuelo');
+    if (!codigoInput) return;
+
+    const raw = codigoInput.value.trim();
+    if (!raw) return;
+
+    const codNorm = normalizarCodigoVuelo(raw);
+
+    try {
+      const resp = await fetch('https://vuelos-flask-production.up.railway.app/datos-limpios', {
+        method: 'GET'
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      const arr = Array.isArray(data.arribos) ? data.arribos : [];
+      const par = Array.isArray(data.partidas) ? data.partidas : [];
+
+      const matchArribo = arr.find(v => normalizarCodigoVuelo(v.vuelo) === codNorm);
+      const matchPartida = !matchArribo ? par.find(v => normalizarCodigoVuelo(v.vuelo) === codNorm) : null;
+
+      if (!matchArribo && !matchPartida) {
+        // Si no se encuentra, no tocamos nada; el usuario puede completar a mano.
+        console.log('Vuelo no encontrado en API');
+        return;
+      }
+
+      if (matchArribo) {
+        rellenarCamposVueloDesdeAPI(matchArribo, true);
+      } else if (matchPartida) {
+        rellenarCamposVueloDesdeAPI(matchPartida, false);
+      }
+
+      updatePreview();
+    } catch (e) {
+      console.warn('Error consultando API de vuelos', e);
+      // No rompemos nada; simplemente no autocompleta.
+    }
+  }
+
+  // Rellenar campos del bloque "Datos del vuelo" con el objeto devuelto por la API
+  function rellenarCamposVueloDesdeAPI(vuelo, esArribo) {
+    // Empresa: prefijo del código de vuelo (AR, WJ, FO, etc.)
+    const empresaCod = (vuelo.vuelo || '').split(' ')[0] || '';
+
+    const empresaInput = qs('empresa');
+    const matriculaInput = qs('matricula');
+    const origenInput = qs('origen');
+    const destinoInput = qs('destino');
+    const horaArriboInput = qs('horaArribo');
+    const horaPartidaInput = qs('horaPartida');
+    const posicionInput = qs('posicion');
+
+    if (empresaInput) empresaInput.value = empresaCod;
+    if (matriculaInput && vuelo.matricula && vuelo.matricula !== '---') matriculaInput.value = vuelo.matricula;
+    if (posicionInput && vuelo.posicion && vuelo.posicion !== '---') posicionInput.value = vuelo.posicion;
+
+    if (esArribo) {
+      marcarTipoVueloRadio('Arribo');
+      if (origenInput) origenInput.value = vuelo.lugar || '';
+      if (destinoInput) destinoInput.value = 'AEP';
+      if (horaArriboInput) horaArriboInput.value = vuelo.hora_est || vuelo.hora_prog || '';
+    } else {
+      marcarTipoVueloRadio('Salida');
+      if (origenInput) origenInput.value = 'AEP';
+      if (destinoInput) destinoInput.value = vuelo.lugar || '';
+      if (horaPartidaInput) horaPartidaInput.value = vuelo.hora_prog || vuelo.hora_est || '';
+    }
   }
 
   // Tablas dinámicas
@@ -1061,7 +1165,8 @@
   window.__planilla = {
     generarPDF,
     guardarBorrador,
-    updatePreview
+    updatePreview,
+    autoCompletarVueloDesdeAPI
   };
 
 })();
