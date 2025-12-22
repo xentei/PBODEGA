@@ -381,7 +381,7 @@
   function guardarBorrador() {
     const data = {};
     const campos = [
-      'ordenServicio','fechaControl','patrulla','horaInicio','horaFin',
+      'ordenServicio','fechaControl','horaInicio','horaFin',
       'empresa','codigoVuelo','matricula','origen','destino','posicion',
       'horaArribo','horaPartida','conDemora',
       'novEquipajes','novInspeccion','novEquipajesUtil','otrasNovedades',
@@ -465,6 +465,7 @@
     msg.className = 'error-message';
     msg.textContent = mensaje;
     const wrapper = el.closest('.form-field') || el.parentElement;
+    if (wrapper && wrapper.querySelector('.error-message')) return;
     if (wrapper) {
       wrapper.appendChild(msg);
     } else {
@@ -485,25 +486,49 @@
 
   function validarFilasPersonales(tableId, prefix, etiqueta, errores, dniRegex, legajoRegex) {
     const filas = $all(`#${tableId} tr`);
+    let completadas = 0;
+
+    if (!filas.length) {
+      errores.push(`Cargá al menos un registro en ${etiqueta.toLowerCase()}.`);
+      return 0;
+    }
+
     filas.forEach((fila, idx) => {
       const nombre = fila.querySelector(`input[name="${prefix}_nombre[]"]`);
       const dni = fila.querySelector(`input[name="${prefix}_dni[]"]`);
       const legajo = fila.querySelector(`input[name="${prefix}_legajo[]"]`);
-      const tieneDatos = [nombre, dni, legajo].some(el => el && el.value.trim());
+      const funcion = prefix === 'pt' ? fila.querySelector('select[name="pt_funcion[]"]') : null;
+      const grupo = prefix === 'pt' ? fila.querySelector('input[name="pt_grupo[]"]') : null;
+      const empresa = prefix === 'ps' ? fila.querySelector('input[name="ps_empresa[]"]') : null;
 
-      if (!tieneDatos) return;
+      const camposFila = [nombre, dni, legajo];
+      if (funcion) camposFila.push(funcion);
+      if (grupo) camposFila.push(grupo);
+      if (empresa) camposFila.push(empresa);
 
       const filaLabel = `${etiqueta} ${idx + 1}`;
+      const valores = camposFila.map(el => (el?.value || '').trim());
+      const todosVacios = valores.every(v => !v);
+
+      if (todosVacios) {
+        errores.push(`${filaLabel}: completá todos los datos o eliminá la fila.`);
+        camposFila.forEach(el => marcarCampoConError(el, 'Dato obligatorio.'));
+        return;
+      }
+
+      let filaValida = true;
 
       if (nombre && !nombre.value.trim()) {
         errores.push(`${filaLabel}: completá apellido y nombre.`);
         marcarCampoConError(nombre, 'Completá el apellido y nombre.');
+        filaValida = false;
       }
       if (dni) {
         const val = (dni.value || '').trim();
         if (!val || !dniRegex.test(val)) {
           errores.push(`${filaLabel}: el DNI debe tener 7 u 8 números.`);
           marcarCampoConError(dni, 'Ingresá 7 u 8 números sin puntos.');
+          filaValida = false;
         }
       }
       if (legajo) {
@@ -511,9 +536,32 @@
         if (!val || !legajoRegex.test(val)) {
           errores.push(`${filaLabel}: el legajo debe ser numérico.`);
           marcarCampoConError(legajo, 'Usá solo números (mínimo 3).');
+          filaValida = false;
         }
       }
+      if (funcion && !funcion.value.trim()) {
+        errores.push(`${filaLabel}: indicá la función.`);
+        marcarCampoConError(funcion, 'Seleccioná la función.');
+        filaValida = false;
+      }
+      if (grupo && !grupo.value.trim()) {
+        errores.push(`${filaLabel}: indicá el grupo.`);
+        marcarCampoConError(grupo, 'Completá el grupo.');
+        filaValida = false;
+      }
+      if (empresa && !empresa.value.trim()) {
+        errores.push(`${filaLabel}: indicá la empresa.`);
+        marcarCampoConError(empresa, 'Completá la empresa.');
+        filaValida = false;
+      }
+
+      if (filaValida) completadas += 1;
     });
+
+    if (completadas === 0) {
+      errores.push(`Cargá al menos un registro en ${etiqueta.toLowerCase()}.`);
+    }
+    return completadas;
   }
 
   function validarFormulario() {
@@ -524,16 +572,26 @@
     const legajoRegex = /^[0-9]{3,10}$/;
     const codigoVueloRegex = /^[A-Za-z]{2}[ ]?[0-9]{2,4}$/;
     const matriculaRegex = /^[A-Za-z]{2}-?[A-Za-z0-9]{3,5}$/;
+    const tipoVueloSeleccionado = document.querySelector('input[name="tipoVuelo"]:checked')?.value || '';
 
     const camposObligatorios = [
-      { el: qs('respNombre'), mensaje: 'Completá el apellido y nombre del responsable PSA.' },
-      { el: qs('respDNI'), mensaje: 'Ingresá el DNI del responsable PSA.' },
-      { el: qs('respLegajo'), mensaje: 'Ingresá el legajo del responsable PSA.' },
+      { el: qs('ordenServicio'), mensaje: 'Completá el número de orden de servicio.' },
       { el: qs('fechaControl'), mensaje: 'Seleccioná la fecha de control.' },
       { el: qs('horaInicio'), mensaje: 'Indicá la hora de inicio.' },
       { el: qs('horaFin'), mensaje: 'Indicá la hora de finalización.' },
       { el: qs('empresa'), mensaje: 'Ingresá la empresa del vuelo.' },
-      { el: qs('codigoVuelo'), mensaje: 'Ingresá el código de vuelo.' }
+      { el: qs('codigoVuelo'), mensaje: 'Ingresá el código de vuelo.' },
+      { el: qs('matricula'), mensaje: 'Ingresá la matrícula de la aeronave.' },
+      { el: qs('origen'), mensaje: 'Ingresá el aeropuerto de origen.' },
+      { el: qs('destino'), mensaje: 'Ingresá el aeropuerto de destino.' },
+      { el: qs('posicion'), mensaje: 'Indicá la posición en plataforma.' },
+      { el: qs('novEquipajes'), mensaje: 'Detallá novedades sobre equipajes/cargas.' },
+      { el: qs('novInspeccion'), mensaje: 'Detallá novedades sobre inspección del personal.' },
+      { el: qs('novEquipajesUtil'), mensaje: 'Detallá novedades sobre equipajes utilizados.' },
+      { el: qs('otrasNovedades'), mensaje: 'Completá otras novedades (podés indicar “Sin novedades”).' },
+      { el: qs('respNombre'), mensaje: 'Completá el apellido y nombre del responsable PSA.' },
+      { el: qs('respDNI'), mensaje: 'Ingresá el DNI del responsable PSA.' },
+      { el: qs('respLegajo'), mensaje: 'Ingresá el legajo del responsable PSA.' }
     ];
 
     camposObligatorios.forEach(({ el, mensaje }) => {
@@ -542,6 +600,38 @@
         marcarCampoConError(el, 'Este dato es obligatorio.');
       }
     });
+
+    const cantPersonalSel = document.querySelector('input[name="cantPersonal"]:checked');
+    if (!cantPersonalSel) {
+      errores.push('Indicá la cantidad de personal asignado.');
+      marcarCampoConError(qs('pers1'), 'Seleccioná la cantidad de personal.');
+    } else if (cantPersonalSel.value === 'otro') {
+      const cantOtro = qs('cantPersonalOtro');
+      if (!cantOtro.value.trim()) {
+        errores.push('Especificá la cantidad de personal.');
+        marcarCampoConError(cantOtro, 'Completá la cantidad.');
+      }
+    }
+
+    if (tipoVueloSeleccionado === 'Arribo') {
+      const horaArribo = qs('horaArribo');
+      if (!horaArribo.value.trim()) {
+        errores.push('Indicá la hora de arribo.');
+        marcarCampoConError(horaArribo, 'Este dato es obligatorio para arribos.');
+      }
+    } else {
+      const horaPartida = qs('horaPartida');
+      if (!horaPartida.value.trim()) {
+        errores.push('Indicá la hora de partida.');
+        marcarCampoConError(horaPartida, 'Este dato es obligatorio para partidas.');
+      }
+    }
+
+    const tipoProcedimientoSel = document.querySelector('input[name="tipoProcedimiento"]:checked');
+    if (!tipoProcedimientoSel) {
+      errores.push('Seleccioná el tipo de procedimiento.');
+      marcarCampoConError(document.querySelector('input[name="tipoProcedimiento"]'), 'Elegí una opción.');
+    }
 
     const respDNI = qs('respDNI');
     if (respDNI && respDNI.value.trim() && !dniRegex.test(respDNI.value.trim())) {
@@ -677,7 +767,6 @@
         <h4>🔍 Control PSA</h4>
         <div class="preview-item"><span class="preview-label">Orden Servicio:</span><span class="preview-value">${qs('ordenServicio').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Fecha:</span><span class="preview-value">${formatearFechaArg(qs('fechaControl').value || '') || '-'}</span></div>
-        <div class="preview-item"><span class="preview-label">Patrulla:</span><span class="preview-value">${qs('patrulla').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Hora Inicio:</span><span class="preview-value">${qs('horaInicio').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Hora Fin:</span><span class="preview-value">${qs('horaFin').value || '-'}</span></div>
         <div class="preview-item"><span class="preview-label">Personal:</span><span class="preview-value">${cantPersonal}</span></div>
@@ -910,20 +999,15 @@
       doc.text(title, pageWidth / 2, titleY + 7, { align: 'center' });
       y += titleHeight + 6;
 
-      // PATRULLA + ORDEN SERVICIO (con año dinámico)
+      // ORDEN SERVICIO (con año dinámico)
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
-      doc.text('PATRULLA:', margin, y);
-      doc.setFont(undefined, 'normal');
-      doc.text(qs('patrulla').value || '-', margin + 28, y);
-
-      doc.setFont(undefined, 'bold');
-      doc.text('ORDEN DE SERVICIO Nro:', margin + 90, y);
+      doc.text('ORDEN DE SERVICIO Nro:', margin, y);
       doc.setFont(undefined, 'normal');
       const ordenServ = qs('ordenServicio').value || '';
-      doc.text(ordenServ, margin + 140, y);
+      doc.text(ordenServ, margin + 50, y);
       if (anio) {
-        doc.text('/' + anio, margin + 140 + doc.getTextWidth(ordenServ) + 2, y);
+        doc.text('/' + anio, margin + 50 + doc.getTextWidth(ordenServ) + 2, y);
       }
       y += 8;
 

@@ -959,6 +959,15 @@ select option {
   margin: 12px 0 0;
 }
 
+#errorContainer ul {
+  margin: 8px 0 0 18px;
+  padding-left: 18px;
+}
+
+#errorContainer li {
+  margin: 4px 0;
+}
+
 .alert {
   border-radius: var(--radius-md);
   padding: 12px 14px;
