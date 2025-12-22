@@ -967,10 +967,9 @@
       const margin = 15;
       let y = 12;
 
-      // Fecha cruda (input) y año
+      // Fecha cruda (input)
       const fechaIso = qs('fechaControl').value || '';
       const fechaArg = formatearFechaArg(fechaIso) || '-';
-      const anio = fechaIso ? fechaIso.split('-')[0] : '';
 
       // Logos opcionales
       const logoLeft = await loadImageAsDataURL('logo_left.png');
@@ -999,16 +998,13 @@
       doc.text(title, pageWidth / 2, titleY + 7, { align: 'center' });
       y += titleHeight + 6;
 
-      // ORDEN SERVICIO (con año dinámico)
+      // ORDEN SERVICIO
       doc.setFontSize(9);
       doc.setFont(undefined, 'bold');
       doc.text('ORDEN DE SERVICIO Nro:', margin, y);
       doc.setFont(undefined, 'normal');
       const ordenServ = qs('ordenServicio').value || '';
       doc.text(ordenServ, margin + 50, y);
-      if (anio) {
-        doc.text('/' + anio, margin + 50 + doc.getTextWidth(ordenServ) + 2, y);
-      }
       y += 8;
 
       // CONTROL PSA
