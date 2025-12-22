@@ -308,8 +308,8 @@
     const row = table.insertRow();
     row.innerHTML = `
       <td><input type="text" name="pt_nombre[]" class="form-input" placeholder="PEREZ Juan"></td>
-      <td><input type="text" name="pt_dni[]" class="form-input" placeholder="12345678"></td>
-      <td><input type="text" name="pt_legajo[]" class="form-input" placeholder="12345"></td>
+      <td><input type="text" name="pt_dni[]" class="form-input" placeholder="12345678" pattern="[0-9]{7,8}" minlength="7" maxlength="8" inputmode="numeric" title="DNI sin puntos, 7 u 8 números"></td>
+      <td><input type="text" name="pt_legajo[]" class="form-input" placeholder="12345" pattern="[0-9]{3,10}" minlength="3" maxlength="10" inputmode="numeric" title="Legajo numérico"></td>
       <td>
         <select name="pt_funcion[]" class="form-select">
           <option value="">-</option>
@@ -332,8 +332,8 @@
     const row = table.insertRow();
     row.innerHTML = `
       <td><input type="text" name="ps_nombre[]" class="form-input" placeholder="PEREZ Juan"></td>
-      <td><input type="text" name="ps_dni[]" class="form-input" placeholder="12345678"></td>
-      <td><input type="text" name="ps_legajo[]" class="form-input" placeholder="12345"></td>
+      <td><input type="text" name="ps_dni[]" class="form-input" placeholder="12345678" pattern="[0-9]{7,8}" minlength="7" maxlength="8" inputmode="numeric" title="DNI sin puntos, 7 u 8 números"></td>
+      <td><input type="text" name="ps_legajo[]" class="form-input" placeholder="12345" pattern="[0-9]{3,10}" minlength="3" maxlength="10" inputmode="numeric" title="Legajo numérico"></td>
       <td><input type="text" name="ps_empresa[]" class="form-input" placeholder="SegurSA"></td>
       <td><button type="button" class="btn btn-remove">✕</button></td>
     `;
@@ -450,6 +450,134 @@
   function showAutosaveIndicator() {
     autosaveIndicator.classList.add('show');
     setTimeout(() => autosaveIndicator.classList.remove('show'), 1500);
+  }
+
+  function limpiarMensajesError() {
+    errorContainer.innerHTML = '';
+    $all('.error').forEach(el => el.classList.remove('error'));
+    $all('.error-message').forEach(el => el.remove());
+  }
+
+  function marcarCampoConError(el, mensaje) {
+    if (!el) return;
+    el.classList.add('error');
+    const msg = document.createElement('div');
+    msg.className = 'error-message';
+    msg.textContent = mensaje;
+    const wrapper = el.closest('.form-field') || el.parentElement;
+    if (wrapper) {
+      wrapper.appendChild(msg);
+    } else {
+      el.insertAdjacentElement('afterend', msg);
+    }
+  }
+
+  function mostrarErroresGenerales(errores) {
+    if (!errores.length) {
+      errorContainer.innerHTML = '';
+      return;
+    }
+    let html = '<div class="alert alert-danger"><strong>⚠️ Revisá estos campos:</strong><ul>';
+    errores.forEach(e => html += `<li>${e}</li>`);
+    html += '</ul></div>';
+    errorContainer.innerHTML = html;
+  }
+
+  function validarFilasPersonales(tableId, prefix, etiqueta, errores, dniRegex, legajoRegex) {
+    const filas = $all(`#${tableId} tr`);
+    filas.forEach((fila, idx) => {
+      const nombre = fila.querySelector(`input[name="${prefix}_nombre[]"]`);
+      const dni = fila.querySelector(`input[name="${prefix}_dni[]"]`);
+      const legajo = fila.querySelector(`input[name="${prefix}_legajo[]"]`);
+      const tieneDatos = [nombre, dni, legajo].some(el => el && el.value.trim());
+
+      if (!tieneDatos) return;
+
+      const filaLabel = `${etiqueta} ${idx + 1}`;
+
+      if (nombre && !nombre.value.trim()) {
+        errores.push(`${filaLabel}: completá apellido y nombre.`);
+        marcarCampoConError(nombre, 'Completá el apellido y nombre.');
+      }
+      if (dni) {
+        const val = (dni.value || '').trim();
+        if (!val || !dniRegex.test(val)) {
+          errores.push(`${filaLabel}: el DNI debe tener 7 u 8 números.`);
+          marcarCampoConError(dni, 'Ingresá 7 u 8 números sin puntos.');
+        }
+      }
+      if (legajo) {
+        const val = (legajo.value || '').trim();
+        if (!val || !legajoRegex.test(val)) {
+          errores.push(`${filaLabel}: el legajo debe ser numérico.`);
+          marcarCampoConError(legajo, 'Usá solo números (mínimo 3).');
+        }
+      }
+    });
+  }
+
+  function validarFormulario() {
+    limpiarMensajesError();
+    const errores = [];
+
+    const dniRegex = /^[0-9]{7,8}$/;
+    const legajoRegex = /^[0-9]{3,10}$/;
+    const codigoVueloRegex = /^[A-Za-z]{2}[ ]?[0-9]{2,4}$/;
+    const matriculaRegex = /^[A-Za-z]{2}-?[A-Za-z0-9]{3,5}$/;
+
+    const camposObligatorios = [
+      { el: qs('respNombre'), mensaje: 'Completá el apellido y nombre del responsable PSA.' },
+      { el: qs('respDNI'), mensaje: 'Ingresá el DNI del responsable PSA.' },
+      { el: qs('respLegajo'), mensaje: 'Ingresá el legajo del responsable PSA.' },
+      { el: qs('fechaControl'), mensaje: 'Seleccioná la fecha de control.' },
+      { el: qs('horaInicio'), mensaje: 'Indicá la hora de inicio.' },
+      { el: qs('horaFin'), mensaje: 'Indicá la hora de finalización.' },
+      { el: qs('empresa'), mensaje: 'Ingresá la empresa del vuelo.' },
+      { el: qs('codigoVuelo'), mensaje: 'Ingresá el código de vuelo.' }
+    ];
+
+    camposObligatorios.forEach(({ el, mensaje }) => {
+      if (!el || !el.value || !el.value.toString().trim()) {
+        errores.push(mensaje);
+        marcarCampoConError(el, 'Este dato es obligatorio.');
+      }
+    });
+
+    const respDNI = qs('respDNI');
+    if (respDNI && respDNI.value.trim() && !dniRegex.test(respDNI.value.trim())) {
+      errores.push('El DNI del responsable debe tener 7 u 8 números.');
+      marcarCampoConError(respDNI, 'Usá 7 u 8 números sin puntos.');
+    }
+
+    const respLegajo = qs('respLegajo');
+    if (respLegajo && respLegajo.value.trim() && !legajoRegex.test(respLegajo.value.trim())) {
+      errores.push('El legajo del responsable debe ser numérico (3 a 10 dígitos).');
+      marcarCampoConError(respLegajo, 'Solo números, entre 3 y 10 dígitos.');
+    }
+
+    const codigoVuelo = qs('codigoVuelo');
+    if (codigoVuelo) {
+      const val = (codigoVuelo.value || '').trim();
+      if (val && !codigoVueloRegex.test(val)) {
+        errores.push('El código de vuelo debe ser 2 letras y 2-4 números (ej: AR1234).');
+        marcarCampoConError(codigoVuelo, 'Ejemplo válido: AR1234.');
+      }
+    }
+
+    const matricula = qs('matricula');
+    if (matricula) {
+      const val = (matricula.value || '').trim();
+      if (val && !matriculaRegex.test(val)) {
+        errores.push('La matrícula debe tener formato similar a LV-GOO.');
+        marcarCampoConError(matricula, 'Usá el formato LV-GOO.');
+      }
+    }
+
+    validarFilasPersonales('personalTerrestreTable', 'pt', 'Personal terrestre', errores, dniRegex, legajoRegex);
+    validarFilasPersonales('personalSeguridadTable', 'ps', 'Personal de seguridad', errores, dniRegex, legajoRegex);
+
+    mostrarErroresGenerales(errores);
+    return errores;
   }
 
   // Vista previa
@@ -605,34 +733,8 @@
   }
 
   function abrirVistaPrevia() {
-    errorContainer.innerHTML = '';
-    const required = [
-      { id: 'respNombre', name: 'Nombre del Responsable PSA' },
-      { id: 'respDNI', name: 'DNI del Responsable PSA' },
-      { id: 'respLegajo', name: 'Legajo del Responsable PSA' },
-      { id: 'fechaControl', name: 'Fecha de Control' },
-      { id: 'horaInicio', name: 'Hora de Inicio' },
-      { id: 'horaFin', name: 'Hora de Finalización' },
-      { id: 'empresa', name: 'Empresa del Vuelo' },
-      { id: 'codigoVuelo', name: 'Código de Vuelo' }
-    ];
-
-    const errores = [];
-    required.forEach(c => {
-      const el = qs(c.id);
-      if (!el || !el.value || !el.value.toString().trim()) {
-        errores.push(`Falta completar: ${c.name}`);
-        el && el.classList.add('error');
-      } else el.classList.remove('error');
-    });
-
-    if (errores.length) {
-      let html = '<div class="alert alert-danger"><strong>⚠️ Completá los siguientes campos antes de continuar:</strong><ul>';
-      errores.forEach(e => html += `<li>${e}</li>`);
-      html += '</ul></div>';
-      errorContainer.innerHTML = html;
-      return;
-    }
+    const errores = validarFormulario();
+    if (errores.length) return;
 
     updatePreview();
     previewModal.style.display = 'block';
@@ -744,7 +846,7 @@
     personalTerrestreTable.innerHTML = '';
     personalSeguridadTable.innerHTML = '';
     vehiculosContainer.innerHTML = '';
-    errorContainer.innerHTML = '';
+    limpiarMensajesError();
     agregarPersonalTerrestre();
     agregarPersonalSeguridad();
     agregarVehiculo();

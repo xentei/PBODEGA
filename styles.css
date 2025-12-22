@@ -955,6 +955,38 @@ select option {
   border-color: rgba(148, 163, 184, 0.4);
 }
 
+#errorContainer {
+  margin: 12px 0 0;
+}
+
+.alert {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-top: var(--spacing-sm);
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+}
+
+.alert-danger {
+  background: var(--danger-soft);
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.form-input.error,
+.form-select.error,
+textarea.error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px var(--danger-soft);
+}
+
+.error-message {
+  color: #fecaca;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* ============================================
    RESPONSIVE
    ============================================ */
